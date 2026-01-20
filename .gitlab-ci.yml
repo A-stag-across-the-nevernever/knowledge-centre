@@ -1,0 +1,45 @@
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+# Test stage
+test:living-library:
+  stage: test
+  image: node:20
+  script:
+    - cd living_library
+    - npm install
+    - npm test
+  only:
+    changes:
+      - living_library/**/*
+
+# Build documentation
+build:docs:
+  stage: build
+  image: python:3.11
+  script:
+    - pip install mkdocs mkdocs-material
+    - mkdocs build -d public
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
+
+# Deploy to pages (optional)
+pages:
+  stage: deploy
+  dependencies:
+    - build:docs
+  script:
+    - echo "Deploying documentation"
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
