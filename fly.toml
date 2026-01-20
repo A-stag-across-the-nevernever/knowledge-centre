@@ -1,0 +1,83 @@
+# Fly.io configuration for KnowledgeCentre (Living Library)
+#
+# Educational content delivery with celestial coordinate knowledge organization
+# Supports tier-based access (home/school/company deployments)
+#
+# Usage:
+#   1. Install flyctl: https://fly.io/docs/hands-on/install-flyctl/
+#   2. Login: fly auth login
+#   3. Deploy: fly launch --config fly.toml
+#   4. Set deployment tier: fly secrets set DEPLOYMENT_TIER=school
+#   5. Access: https://knowledge-centre-{org-id}.fly.dev
+
+app = "knowledge-centre"
+primary_region = "ord" # Change to preferred region (ord=Chicago, iad=DC, lax=LA, etc.)
+
+kill_signal = "SIGINT"
+kill_timeout = 5
+
+[build]
+  image = "node:20-alpine"
+  [build.args]
+    NODE_ENV = "production"
+
+[env]
+  # Database path (persisted on volume)
+  DB_PATH = "/data/celestial_forge.db"
+
+  # Deployment tier: home, school, company
+  DEPLOYMENT_TIER = "school"
+
+  # API port
+  PORT = "8443"
+
+  # Celestial coordinate system config
+  POLARIS_RA = "37.954557"
+  POLARIS_DEC = "89.264108"
+  POLARIS_ALT = "0"
+
+# Persistent storage for knowledge archive
+[[mounts]]
+  source = "knowledge_data"
+  destination = "/data"
+  initial_size = "20gb" # Adjust based on content size
+
+# HTTP/HTTPS services
+[[services]]
+  http_checks = []
+  internal_port = 8443
+  protocol = "tcp"
+  script_checks = []
+
+  [services.concurrency]
+    hard_limit = 50
+    soft_limit = 40
+    type = "connections"
+
+  # HTTP → HTTPS redirect
+  [[services.ports]]
+    force_https = true
+    handlers = ["http"]
+    port = 80
+
+  # HTTPS endpoint
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  # Health check
+  [[services.tcp_checks]]
+    grace_period = "10s"
+    interval = "15s"
+    restart_limit = 0
+    timeout = "2s"
+
+# Auto-scaling
+[scaling]
+  min_machines = 1
+  max_machines = 3
+
+# Metrics and monitoring
+[metrics]
+  port = 9091
+  path = "/metrics"
